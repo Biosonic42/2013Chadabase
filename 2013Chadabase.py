@@ -34,7 +34,7 @@ root.withdraw()
 
 #screen = pygame.display.set_mode((WIDTH,HEIGHT),pygame.FULLSCREEN)
 screen = pygame.display.set_mode((WIDTH,HEIGHT))
-pygame.display.set_caption("ultimAteAscent Chadabase_0.2")
+pygame.display.set_caption("ultimAteAscent Chadabase_0.3")
 tab = 0     # The tab displayed:
             # 0 - blank
             # 1 - Team
@@ -71,6 +71,7 @@ t3_buttons = []                                     # rank buttons for scrolling
 t4_scrolls = []                                    # hopefully only need 1 raking tab, but just in case
 t4_buttons = []
 
+Searches = {}
 t5_stuff = []                                       #tab 5(Search) textboxes and radio boxes
 t5_scroll = 0                                       #tab 5's scroller; create later before main loop
 t5_wscroll = 0                                      #tab 5's scroller for teams we want on our alliance
@@ -509,7 +510,7 @@ class Entry():
 
     def primary_sort(self):
         # Gets the match offensive score, whether the robot was offensive, etc.
-        self.autoScore = (2*self.autoLowP) + (4*self.teleMidP) + (6*self.teleTopP)
+        self.autoScore = (2*self.autoLowP) + (4*self.autoMidP) + (6*self.autoTopP)
         self.teleScore = self.teleLowP + (2*self.teleMidP) + (3*self.teleTopP) + (5*self.telePyrP)
 
         self.ScoreInAuto = True if self.autoScore > 0 else False
@@ -676,8 +677,8 @@ class Team():
         self.TotalScoredOnPyr = sum(self.ScoredOnPyr)
 
     def get_avg_AutoTele(self):
-        self.avgAuto = sum(self.autoScores)/len(self.matches) if self.hadAuto else 0
-        self.avgTele = sum(self.teleScores)/len(self.matches) if self.hadTele else 0
+        self.avgAuto = sum(self.autoScores)/self.hadAuto if self.hadAuto else 0
+        self.avgTele = sum(self.teleScores)/self.hadTele if self.hadTele else 0
         self.discsPUtoScored = sum(self.DiscsPU)/sum(self.teleDiscsScored) if sum(self.teleDiscsScored)>0 else 0
 
 #----------------------------------------------------------------------------------------------------
@@ -1134,17 +1135,17 @@ def calculate():
         team.avg_waScore = sum(team.waScores)/len(team.waScores) if len(team.waScores)>0 else 0
         team.avg_autoScore = sum(team.autoScores)/len(team.autoScores) if len(team.autoScores)>0 else "N/A"
         team.avg_autoDiscsPU = sum(team.autoDiscsPU)/len(team.autoDiscsPU) if len(team.autoDiscsPU) else 0
-        team.avg_autoTopP = sum(team.autoTopP)/len(team.autoTopP) if len(team.autoTopP) else 0
-        team.avg_autoMidP = sum(team.autoMidP)/len(team.autoMidP) if len(team.autoMidP) else 0
-        team.avg_autoLowP = sum(team.autoLowP)/len(team.autoLowP) if len(team.autoLowP) else 0
+        team.avg_autoTopP = sum(team.autoTopP)/team.hadAuto if team.hadAuto else 0
+        team.avg_autoMidP = sum(team.autoMidP)/team.hadAuto if team.hadAuto else 0
+        team.avg_autoLowP = sum(team.autoLowP)/team.hadAuto if team.hadAuto else 0
         team.avg_DiscsPU = sum(team.DiscsPU)/len(team.DiscsPU) if len(team.DiscsPU)>0 else 0
         team.avg_FloorDiscsPU = sum(team.teleFloorDiscsPU)/len(team.teleFloorDiscsPU) if len(team.teleFloorDiscsPU)>0 else 0
         team.avg_StationDiscsPU = sum(team.teleStationDiscsPU)/len(team.teleStationDiscsPU) if len(team.teleStationDiscsPU)>0 else 0
         team.avg_DiscsScored = sum(team.teleDiscsScored)/len(team.teleDiscsScored) if len(team.teleDiscsScored)>0 else 0
-        team.avg_telePyrP = sum(team.telePyrP)/team.hadTele if len(team.telePyrP)>0 else 0
-        team.avg_teleTopP = sum(team.teleTopP)/team.hadTele if len(team.teleTopP)>0 else 0
-        team.avg_teleMidP = sum(team.teleMidP)/team.hadTele if len(team.teleMidP)>0 else 0
-        team.avg_teleLowP = sum(team.teleLowP)/team.hadTele if len(team.teleLowP)>0 else 0
+        team.avg_telePyrP = sum(team.telePyrP)/team.hadTele if team.hadTele else 0
+        team.avg_teleTopP = sum(team.teleTopP)/team.hadTele if team.hadTele else 0
+        team.avg_teleMidP = sum(team.teleMidP)/team.hadTele if team.hadTele else 0
+        team.avg_teleLowP = sum(team.teleLowP)/team.hadTele if team.hadTele else 0
 
     global off_rank, def_rank, ast_rank, tot_rank, auto_rank, tel_rank, pyr_rank
     off_rank = []
@@ -1313,7 +1314,7 @@ def team_data():
                 elif textbox.type == "avgAutoLowP": textbox.value = str(teamdata.avg_autoLowP)
 
                 elif textbox.type == "pWasDisabled": textbox.value = str(int(100*teamdata.disabled)/len(teamdata.matches)) + "%"
-                elif textbox.type == "avgDisabled": textbox.value = str(float(sum(teamdata.disabledState)/len(teamdata.disabledState)))
+                elif textbox.type == "avgDisabled": textbox.value = str(int(sum(teamdata.disabledState)/len(teamdata.disabledState)))
                 elif textbox.type == "totalDisabled": textbox.value = str(teamdata.disabledCount)
                 elif textbox.type == "avgTotalPickUp": textbox.value = str(teamdata.avg_DiscsPU)
                 elif textbox.type == "avgFloorPickUp": textbox.value = str(teamdata.avg_FloorDiscsPU)
@@ -2002,6 +2003,253 @@ def ratings2():
                 elif button.type == "pyrdo":
                     t4_scrolls[2].update(False)
 
+#----------------------------------------------------------------------------------------------------
+# Search Sub Functions and Definition of Search Dictionary
+#  -- used in looking for specifics from the search tab
+#----------------------------------------------------------------------------------------------------
+
+def greaterOff(item):
+    global team_list
+
+    try:
+        i = 0
+        while i < len(team_list):
+            if team_list[i][1].avgOff < int(item.value):
+                del team_list[i]
+                i -= 1
+            i += 1
+    except:
+        item.value = 0
+
+def greaterDef(item):
+    global team_list
+    
+    try:
+        i = 0
+        while i < len(team_list):
+            if team_list[i][1].avgDef < int(item.value):
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+
+def greaterAst(item):
+    global team_list
+    
+    try:
+        i = 0
+        while i < len(team_list):
+            if team_list[i][1].avgAst < int(item.value):
+                del team_list[i]
+                i -= 1
+            i += 1
+    except:
+        item.value = 0
+
+def wasOff(item):
+    global team_list
+    
+    try:
+        i = 0
+        while i < len(team_list):
+            if team_list[i][i].numOff<item.check:
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+
+def wasDef(item):
+    global team_list
+    
+    try:
+        i = 0
+        while i < len(team_list):
+            if team_list[i][1].numDef<item.check:
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+
+def wasAst(item):
+    global team_list
+    
+    try:
+        i = 0
+        while i < len(team_list):
+            if team_list[i][1].numAst<item.check:
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+
+def autoScored(item):
+    global team_list
+    try:
+        i = 0
+        while i < len(team_list):
+            if team_list[i][1].scoredAuto<item.check:
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+
+def autoStartInZone(item):
+    global team_list
+    try:
+        i = 0
+        while i < len(team_list):
+            if team_list[i][1].StartedInAuto<item.check:
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+
+def autoOther(item):
+    global team_list
+    try:
+        i = 0
+        while i < len(team_list):
+            if team_list[i][1].OtherAutoStrat<item.check:
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+def successHang(item):
+    global team_list
+    
+    try:
+        i = 0
+        while i < len(team_list):
+            if team_list[i][1].timesHanged<item.check:
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+
+def greaterHangScore(item):
+    global team_list
+    try:
+        i = 0
+        while i < len(team_list):
+            if team_list[i][1].avgHangScore < int(item.value):
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+
+def supportBot(item):
+    global team_list
+    try:
+        i = 0
+        while i < len(team_list):
+            if team_list[i][1].TotalSupportsBot<item.check:
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+def scoredOnPyr(item):
+    global team_list
+    try:
+        i = 0
+        while i < len(team_list):
+            if team_list[i][1].TotalScoredOnPyr<item.check:
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+
+def neverDisabled(item):
+    global team_list
+    try:
+        i = 0
+        while i < len(team_list):
+            if item.check == 1 and team_list[i][1].disabled > 0:
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+
+def noRegFoul(item):
+    global team_list
+    try:
+        i = 0
+        while i < len(team_list):
+            if item.check == 1 and team_list[i][1].hadRegFoul > 0:
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+
+def noTechFoul(item):
+    global team_list
+    try:
+        i = 0
+        while i < len(team_list):
+            if item.check == 1 and team_list[i][1].hadTechFoul > 0:
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+
+def noYellow(item):
+    global team_list
+    try:
+        i = 0
+        while i < len(team_list):
+            if item.check == 1 and team_list[i][1].hadYellow > 0:
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+
+def noRed(item):
+    global team_list
+    try:
+        i = 0
+        while i < len(team_list):
+            if item.check == 1 and team_list[i][1].hadRed > 0:
+                del team_list[i]
+                i -= 1
+            i += 1
+
+    except:
+        item.value = 0
+
+Searches = {"greaterOff":greaterOff, "greaterDef":greaterDef, "greaterAst":greaterAst, "wasOff":wasOff, "wasDef":wasDef, "wasAst":wasAst, \
+            "autoScored":autoScored, "autoStartInZone":autoStartInZone, "autoOther":autoOther, \
+            "successHang":successHang, "greaterHangScore":greaterHangScore, \
+            "supportBot":supportBot, "scoredOnPyr":scoredOnPyr, "neverDisabled":neverDisabled, \
+            "noRegFoul":noRegFoul, "noTechFoul":noTechFoul, "noYellow":noYellow, "noRed":noRed}
 
 #----------------------------------------------------------------------------------------------------
 # Search
@@ -2010,7 +2258,7 @@ def search():
     global screen
     global t5_stuff
     global tabnum
-    global Teams
+    global teams
     global mpos
     global t5_scroll
     global t5_tempbut
@@ -2019,6 +2267,7 @@ def search():
     global t5_buttons
     global t5_update
     global old_list
+    global Searches
     global tabnum
     global t1_tboxes
     global t1_update
@@ -2031,7 +2280,7 @@ def search():
     global t5_redraw
     global t5_wbmov
     global available_teams
-    global t5_update
+    global t7_update
 
     # Add title text for each scroller
     font = pygame.font.Font(None,20)
@@ -2040,14 +2289,14 @@ def search():
     text = font.render(" Alliance Wanted List: ",True,txcolor,bgcolor)
     screen.blit(text,(625,65))
     # Add tempbut and temprad to scroller image; only change if update needed
-    if t5_update == True or t5_redraw == True:
+    if t5_update == 1 or t5_redraw == 1:
         t5_scroll.surface = pygame.Surface((180,2000)) # Reset surface
         t5_scroll.surface.fill(bgcolor)
         for b in t5_tempbut:
             b.draw(t5_scroll.surface)
         for r in t5_temprad:
             r.draw(t5_scroll.surface)
-        t5_update = True
+        t5_update = 0
     #Draw the scroller image
     t5_scroll.draw(screen)
 
@@ -2061,7 +2310,7 @@ def search():
             r.draw(t5_wscroll.surface)
         for bu in t5_wbmov:
             bu.draw(t5_wscroll.surface)
-        update_wanted = True
+        update_wanted = 0
     #Draw the scroller image
     t5_wscroll.draw(screen)
 
@@ -2071,7 +2320,7 @@ def search():
 
     #Detect button clicks
     nx = mpos[0] - t5_wscroll.x
-    ny = mpos[1] - t5_wscroll.y + t5_wscroll.currenty
+    ny = mpos[1] - t5_wscroll.y + t5_wscroll.currenty 
     for but in t5_wbmov:
         if but.x<=nx<=but.x+but.w and but.y<=ny<=but.y+but.h and \
            but.y+but.h<t5_scroll.currenty+t5_scroll.maxh and but.y>t5_scroll.currenty:
@@ -2098,8 +2347,8 @@ def search():
                     if te[1][0] == int(number):
                         te[0] += 1
                         print "Our rank is now" + str(te[0])
-                update_wanted = True
-            elif t=="do":
+                update_wanted = 1
+            if t=="do":
                 for te in wanted:
                     if te[1][0] == int(number): # Is the team
                         rank = te[0]
@@ -2112,8 +2361,8 @@ def search():
                     if te[1][0] == int(number):
                         te[0] -= 1
                         print "Our rank is now:" + str(te[0])
-                update_wanted = True
-
+                update_wanted = 1
+            
     for but in t5_buttons:
         if mbut[0] == 1:
             if but.x<=cmpos[0]<=but.x+but.w and but.y<=cmpos[1]<=but.y+but.h:
@@ -2134,21 +2383,21 @@ def search():
                 if textbox.type == "tnum":
                     textbox.value = but.type
             tabnum = int(but.type)
-            t1_update = True
+            t1_update = 1
             tab = 1
     for rad in t5_temprad:
         if rad.flip:   #button to left:
             if rad.x+.75*rad.size>=nx>=rad.x+.25*rad.size and \
                rad.y+.75*rad.size>=ny>=rad.y+.25*rad.size: # Clicked
-                if rad.check == 0:
+                if rad.check == 0: 
                     for t in team_list:
                         if t[0] == rad.teamnum: #Add team to wanted list
                             wanted.append([len(wanted)+1,t])
-                            t6_update = True
+                            t7_update = 1
                     rad.click()
                     rad.draw(t5_scroll.surface)
-                    update_wanted = True
-                    t5_redraw = True
+                    update_wanted = 1
+                    t5_redraw = 1
                 else: # Already Selected; now, deselect and remove from wanted list
                     for t in team_list:
                         if t[0] == rad.teamnum:
@@ -2160,19 +2409,19 @@ def search():
                                 i += 1
                     rad.click()
                     rad.draw(t5_scroll.surface)
-                    update_wanted = True
-                    t5_redraw = True
+                    update_wanted = 1
+                    t5_redraw = 1
         else: #Button to right
             if rad.x+item.w+.75*rad.size>=nx>=rad.x+item.w+.25*rad.size and \
                rad.y+.75*rad.size>=ny>=rad.y+.25*rad.size:
-                if rad.check == 0:
+                if rad.check == 0: 
                     for t in team_list:
                         if t[0] == rad.teamnum: #Add team to wanted list
                             wanted.append([len(wanted)+1,t])
                     rad.click()
                     rad.draw(t5_scroll.surface)
-                    update_wanted = True
-                    t5_redraw = True
+                    update_wanted = 1
+                    t5_redraw = 1
                 else: # Already Selected; now, deselct and remove from wanted list
                     for t in team_list:
                         if t[0] == rad.teamnum:
@@ -2184,11 +2433,11 @@ def search():
                                 i += 1
                     rad.click()
                     rad.draw(t5_scroll.surface)
-                    update_wanted = True
-                    t5_redraw = True
-
+                    update_wanted = 1
+                    t5_redraw = 1
+    
     #click events
-    for item in t5_stuff:
+    for item in t5_stuff:   
         try:#uses this for radio buttons
             if item.flip:   #button to left:
                 if item.x+.75*item.size>=mpos[0]>=item.x+.25*item.size and \
@@ -2222,230 +2471,16 @@ def search():
         team_list.append([team.number,team])
     if len(team_list) > 0:
         for item in t5_stuff:
-            if item.type == "greaterOff":     #greater than offensive score
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if team_list[i][1].avgOff < int(item.value):
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "greaterDef": #greater than defensive score
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if team_list[i][1].avgDef < int(item.value):
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "greaterAst": #greater than assistive score
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if team_list[i][1].avgAst < int(item.value):
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "wasOff": #was offensive for at least 1 match
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if team_list[i][i].numOff<item.check:
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "wasDef": #was defensive for at least 1 match
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if team_list[i][1].numDef<item.check:
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "wasAst": #was assistive for at least 1 match
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if team_list[i][1].numAst<item.check:
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "autoScored": #scored in auto
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if team_list[i][1].scoredAuto<item.check:
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "autoStartInZone": #started in the autonomous zone for autonomous
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if team_list[i][1].StartedInAuto<item.check:
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "autoOther": #other strategy in auto
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if team_list[i][1].OtherAutoStrat<item.check:
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "successHang": #hanged from a pyramid successfully
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if team_list[i][1].timesHanged<item.check:
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "greaterHangScore": #greater than hang score
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if team_list[i][1].avgHangScore < int(item.value):
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "supportBot": #supported another bot on the pyramid successfully
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if team_list[i][1].TotalSupportsBot<item.check:
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "scoredOnPyr": #scored while on the pyramid tab
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if team_list[i][1].TotalScoredOnPyr<item.check:
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "neverDisabled": #never disabled
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if item.check == 1 and team_list[i][1].disabled > 0:
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "noRegFoul": #never got a Regular foul
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if item.check == 1 and team_list[i][1].hadRegFoul > 0:
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "noTechFoul": #never got a Technical foul
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if item.check == 1 and team_list[i][1].hadTechFoul > 0:
-                            del team_list[i]
-                            x = len_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "noYellow": #no yellow cards
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if item.check == 1 and team_list[i][1].hadYellow > 0:
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
-            elif item.type == "noRed": #no red cards
-                try:
-                    i = 0
-                    x = len(team_list)
-                    while i < x:
-                        if item.check == 1 and team_list[i][1].hadRed > 0:
-                            del team_list[i]
-                            x = len(team_list)
-                            i -= 1
-                        i += 1
-                except:
-                    item.value = 0
+            if item.type in Searches:
+                Searches[item.type](item)
+
     team_list.sort()
     nlist = []
     for t in team_list:
         nlist.append(t[0])
     nlist.sort()
     if nlist != old_list:
-        t5_update = True
+        t5_update = 1
 
     # Deal with the wanted scroller(t5_wscroll)
     if update_wanted:
