@@ -27,12 +27,14 @@ y0 = 65  # initial y-coordinate for the TAB
 bgcolor = (0,51,0)
 txcolor = (255,223,0)
 
+Reload = False
+
 root = Tk()
 root.withdraw()
 
-#screen = pygame.display.set_mode((WIDTH,HEIGHT)),pygame.FULLSCREEN)
+#screen = pygame.display.set_mode((WIDTH,HEIGHT),pygame.FULLSCREEN)
 screen = pygame.display.set_mode((WIDTH,HEIGHT))
-pygame.display.set_caption("ultimAteAscent Chadabase_0.1")
+pygame.display.set_caption("ultimAteAscent Chadabase_0.2")
 tab = 0     # The tab displayed:
             # 0 - blank
             # 1 - Team
@@ -358,10 +360,9 @@ class button():
         self.th = thickness
         font = pygame.font.Font(None,self.size)
         self.text= font.render(self.text,True,txcolor,bgcolor)
-        if w==0: self.w = pygame.Surface.get_width(self.text)
-        else: self.w = w
-        if h==0: self.h = pygame.Surface.get_height(self.text)
-        else: self.h = h
+        self.w = pygame.Surface.get_width(self.text) if w==0 else w
+        self.h = pygame.Surface.get_height(self.text) if h==0 else h
+
     def draw(self,screen):
         screen.blit(self.text,(self.x+.5*self.th,self.y+.5*self.th))
         pygame.draw.rect(screen, (255,0,0), (self.x,self.y,self.w+.5*self.th,self.h+.5*self.th),self.th)
@@ -407,16 +408,18 @@ class button():
             try:
                 import_data()
                 TeamDataImported = True
-            except:  print "Could Not Import TeamData"
+            except:
+                print "Could Not Import TeamData"
+                
             if TeamDataImported: calculate()
-        elif self.type == "ip":
-            #if TeamCalc == True:
-            PitDataImported = False
-            try:
-                import_data2()
-                PitDataImported = True
-            except:  print "Could Not Import PitData"
-            if PitDataImported: calculate2()
+##        elif self.type == "ip":
+##            #if TeamCalc == True:
+##            PitDataImported = False
+##            try:
+##                import_data2()
+##                PitDataImported = True
+##            except:  print "Could Not Import PitData"
+##            if PitDataImported: calculate2()
         elif self.type == "o": #open
             print "opening"
             try:
@@ -525,12 +528,11 @@ class Entry():
         self.isOffensive = True if self.offensiveScore > 0 else False
 
     def secondary_sort(self,oppAvg,oppOff,allAvg,allOff,allDef,allAst):
-        self.defScore = (oppOff - allAvg) / allDef / 5 if self.Defensive else 0                   # keep messing with this until it comes up with
-        self.astScore = (allOff - oppAvg) / allAst / 5 if self.Assistive else 0                   # reasonable values instead of just crap
-
+        self.defScore = (allOff - oppOff - (allAvg - oppAvg)) / allDef if self.Defensive else 0     # keep messing with this until it comes up with
+        self.astScore = (allAvg + allOff - oppAvg - oppOff) / allAst / 6 if self.Assistive else 0 # reasonable values instead of just crap
     def tertiary_sort(self):
         self.totalScore = self.defScore + self.astScore + self.offensiveScore - self.foulScore
-        self.totaltaScore = self.defScore + self.astScore + self.teleautoScore - self.foulScore
+        self.totaltaScore = self.defScore + self.astScore + self.teleautoScore
 
 #----------------------------------------------------------------------------------------------------
 # Entry2 Class
@@ -668,7 +670,10 @@ class Team():
                 self.attemptedHang += 1
                 
         self.hangsSucctoAtt = self.timesHanged/self.attemptedHang if self.attemptedHang else 0
-        self.avgHangScore = sum(self.hangScores)/len(self.hangScores) if len(self.hangScores)>0 else 0
+        self.avgHangScore = sum(self.hangScores)/self.timesHanged if self.timesHanged else 0
+
+        self.TotalSupportsBot = sum(self.SupportsBot)
+        self.TotalScoredOnPyr = sum(self.ScoredOnPyr)
 
     def get_avg_AutoTele(self):
         self.avgAuto = sum(self.autoScores)/len(self.matches) if self.hadAuto else 0
@@ -757,15 +762,28 @@ def save_csv():
 def import_data():
     global TeamEntries
     global TeamCalc
-    TeamCalc = False
+    global old_file
+    global Reload
+    #TeamCalc = False
     if not TeamCalc:
-        filename = tkFileDialog.askopenfilename()
-        filename = str(filename)
-        print "file selected"
-        filename = os.path.basename(filename)
-        print filename
-        new_data = open(filename,"r")
-        print "file opened"
+        if Reload:
+            oldFile = open("old_file.txt","r")
+            Filename = oldFile.read()
+            new_data = open(Filename,"r")
+            print "file opened"
+            
+        else:
+            filename = tkFileDialog.askopenfilename()
+            filename = str(filename)
+            print "file selected"
+            filename = os.path.basename(filename)
+            print filename
+            new_data = open(filename,"r")
+            print "file opened"
+
+            oldFile = open("old_file.txt","w")
+            oldFile.write(filename)
+            
         # Clean out the data except for TeamEntries.  This way, data won't count multiple teams during
         # calculations
         global Teams
@@ -777,6 +795,7 @@ def import_data():
         for line in new_data:
             TeamEntries.append(parse_data(line))
         print "--Data parsed"
+
     #except:
     #    print "error"
 #----------------------------------------------------------------------------------------------------
@@ -859,6 +878,7 @@ def calculate():
             if t.number == entry.Team:
                 t.matches.append(entry.Match)
                 t.oScores.append(entry.offensiveScore)
+                t.taScores.append(entry.teleautoScore)
                 t.numOff += int(entry.isOffensive)
                 t.numDef += int(entry.Defensive)
                 t.numAst += int(entry.Assistive)
@@ -910,6 +930,7 @@ def calculate():
 
             Teams[len(Teams)-1].matches.append(entry.Match)
             Teams[len(Teams)-1].oScores.append(entry.offensiveScore)
+            Teams[len(Teams)-1].taScores.append(entry.teleautoScore)
             Teams[len(Teams)-1].numOff += int(entry.isOffensive)
             Teams[len(Teams)-1].numDef += int(entry.Defensive)
             Teams[len(Teams)-1].numAst += int(entry.Assistive)
@@ -979,6 +1000,7 @@ def calculate():
                         for team in Teams:
                             if team.number == entry.Team:
                                 match.taavgSum0 += team.avgTeleAutoOff
+                                
                 elif entry.AllianceColor == 1:
                     match.all1.append(entry.Team)
                     match.off1 += entry.teleautoScore
@@ -1008,6 +1030,7 @@ def calculate():
                     for team in Teams:
                         if team.number == entry.Team:
                             Matches[len(Matches)-1].taavgSum0 += team.avgTeleAutoOff
+
             elif entry.AllianceColor == 1:
                 Matches[len(Matches)-1].all1.append(entry.Team)
                 Matches[len(Matches)-1].off1 += entry.teleautoScore
@@ -1109,7 +1132,7 @@ def calculate():
         team.avg_woScore = sum(team.woScores)/len(team.woScores) if len(team.woScores)>0 else 0
         team.avg_wdScore = sum(team.wdScores)/len(team.wdScores) if len(team.wdScores)>0 else 0
         team.avg_waScore = sum(team.waScores)/len(team.waScores) if len(team.waScores)>0 else 0
-        team.avg_autoScore = sum(team.autoScores)/team.hadAuto if team.hadAuto>0 else "N/A"
+        team.avg_autoScore = sum(team.autoScores)/len(team.autoScores) if len(team.autoScores)>0 else "N/A"
         team.avg_autoDiscsPU = sum(team.autoDiscsPU)/len(team.autoDiscsPU) if len(team.autoDiscsPU) else 0
         team.avg_autoTopP = sum(team.autoTopP)/len(team.autoTopP) if len(team.autoTopP) else 0
         team.avg_autoMidP = sum(team.autoMidP)/len(team.autoMidP) if len(team.autoMidP) else 0
@@ -1118,10 +1141,10 @@ def calculate():
         team.avg_FloorDiscsPU = sum(team.teleFloorDiscsPU)/len(team.teleFloorDiscsPU) if len(team.teleFloorDiscsPU)>0 else 0
         team.avg_StationDiscsPU = sum(team.teleStationDiscsPU)/len(team.teleStationDiscsPU) if len(team.teleStationDiscsPU)>0 else 0
         team.avg_DiscsScored = sum(team.teleDiscsScored)/len(team.teleDiscsScored) if len(team.teleDiscsScored)>0 else 0
-        team.avg_telePyrP = sum(team.telePyrP)/len(team.telePyrP) if len(team.telePyrP)>0 else 0
-        team.avg_teleTopP = sum(team.teleTopP)/len(team.teleTopP) if len(team.teleTopP)>0 else 0
-        team.avg_teleMidP = sum(team.teleMidP)/len(team.teleMidP) if len(team.teleMidP)>0 else 0
-        team.avg_teleLowP = sum(team.teleLowP)/len(team.teleLowP) if len(team.teleLowP)>0 else 0
+        team.avg_telePyrP = sum(team.telePyrP)/team.hadTele if len(team.telePyrP)>0 else 0
+        team.avg_teleTopP = sum(team.teleTopP)/team.hadTele if len(team.teleTopP)>0 else 0
+        team.avg_teleMidP = sum(team.teleMidP)/team.hadTele if len(team.teleMidP)>0 else 0
+        team.avg_teleLowP = sum(team.teleLowP)/team.hadTele if len(team.teleLowP)>0 else 0
 
     global off_rank, def_rank, ast_rank, tot_rank, auto_rank, tel_rank, pyr_rank
     off_rank = []
@@ -1290,12 +1313,12 @@ def team_data():
                 elif textbox.type == "avgAutoLowP": textbox.value = str(teamdata.avg_autoLowP)
 
                 elif textbox.type == "pWasDisabled": textbox.value = str(int(100*teamdata.disabled)/len(teamdata.matches)) + "%"
-                elif textbox.type == "avgDisabled": textbox.value = str(int(sum(teamdata.disabledState)/len(teamdata.disabledState)))
+                elif textbox.type == "avgDisabled": textbox.value = str(float(sum(teamdata.disabledState)/len(teamdata.disabledState)))
                 elif textbox.type == "totalDisabled": textbox.value = str(teamdata.disabledCount)
                 elif textbox.type == "avgTotalPickUp": textbox.value = str(teamdata.avg_DiscsPU)
                 elif textbox.type == "avgFloorPickUp": textbox.value = str(teamdata.avg_FloorDiscsPU)
                 elif textbox.type == "avgStationPickUp": textbox.value = str(teamdata.avg_StationDiscsPU)
-                elif textbox.type == "rPickUpScored": textbox.value = str(teamdata.discsPUtoScored)
+                elif textbox.type == "rPickUpScored": textbox.value = str(teamdata.discsPUtoScored) + " : 1"
                 elif textbox.type == "avgTeleScore": textbox.value = str(teamdata.avgTele)
                 elif textbox.type == "avgTelePyrP": textbox.value = str(teamdata.avg_telePyrP)
                 elif textbox.type == "avgTeleTopP": textbox.value = str(teamdata.avg_teleTopP)
@@ -1303,7 +1326,7 @@ def team_data():
                 elif textbox.type == "avgTeleLowP": textbox.value = str(teamdata.avg_teleLowP)
 
                 elif textbox.type == "avgHangScore": textbox.value = str(teamdata.avgHangScore)
-                elif textbox.type == "rHangSuccToAtt": textbox.value = str(teamdata.hangsSucctoAtt)
+                elif textbox.type == "rHangSuccToAtt": textbox.value = str(teamdata.hangsSucctoAtt) + " : 1"
                 elif textbox.type == "pHanged": textbox.value = str(int(100*teamdata.timesHanged)/len(teamdata.matches)) + "%"
                 elif textbox.type == "avgSupportBot": textbox.value = str(int(sum(teamdata.SupportsBot)/len(teamdata.SupportsBot)))
                 elif textbox.type == "avgScoredOnPyr": textbox.value = str(int(sum(teamdata.ScoredOnPyr)/len(teamdata.ScoredOnPyr)))
@@ -1379,7 +1402,7 @@ def team_data():
                 display.get_ab()
                 draw = display.get_image(300,300,(255,255,255),(0,0,0))
                 screen.blit(draw,(x+tbox.w+.5*tbox.th,y+tbox.size+.5*tbox.th-10))
-            elif tbox.type=="avgTot" and teamdata.numDef+teamdata.numOff+teamdata.numAst>0:
+            elif tbox.type=="avgTotal" and teamdata.numDef+teamdata.numOff+teamdata.numAst>0:
                 # Get information for total score
                 i = 0
                 lx = []
@@ -1393,6 +1416,258 @@ def team_data():
                 display.get_ab()
                 draw = display.get_image(300,300,(255,255,255),(0,0,0))
                 screen.blit(draw,(x+tbox.w+.5*tbox.th,y+tbox.size+.5*tbox.th-10))
+            elif tbox.type=="avgRegFoul" and teamdata.hadRegFoul>0:
+                # Get information for total score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.avgRegFoul
+                while i <len(teamdata.avgRegFoul):
+                    lx.append(i+1)
+                    ly.append(teamdata.avgRegFoul[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x+tbox.w+.5*tbox.th,y+tbox.size+.5*tbox.th-10-325))
+            elif tbox.type=="avgTechFoul" and teamdata.hadTechFoul>0:
+                # Get information for total score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.avgTechFoul
+                while i <len(teamdata.avgTechFoul):
+                    lx.append(i+1)
+                    ly.append(teamdata.avgTechFoul[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x+tbox.w+.5*tbox.th,y+tbox.size+.5*tbox.th-10-325))
+            elif tbox.type=="avgAutoScore" and teamdata.hadAuto>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.autoScores
+                while i <len(teamdata.autoScores):
+                    lx.append(i+1)
+                    ly.append(teamdata.autoScores[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-2*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10))
+            elif tbox.type=="avgAutoTopP" and teamdata.hadAuto>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.autoTopP
+                while i <len(teamdata.autoTopP):
+                    lx.append(i+1)
+                    ly.append(teamdata.autoTopP[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-2*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10))
+            elif tbox.type=="avgAutoMidP" and teamdata.hadAuto>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.autoMidP
+                while i <len(teamdata.autoMidP):
+                    lx.append(i+1)
+                    ly.append(teamdata.autoMidP[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-2*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10))
+            elif tbox.type=="avgAutoLowP" and teamdata.hadAuto>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.autoLowP
+                while i <len(teamdata.autoLowP):
+                    lx.append(i+1)
+                    ly.append(teamdata.autoLowP[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-2*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10))
+            elif tbox.type=="avgDisabled" and teamdata.disabled>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.disabledState
+                while i <len(teamdata.disabledState):
+                    lx.append(i+1)
+                    ly.append(teamdata.disabledState[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-2*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10))
+##            elif tbox.type=="avgTotalPickUp" and sum(teamdata.teleDiscsPU)>0:
+##                # Get information for defensive score
+##                i = 0
+##                lx = []
+##                ly = []
+##                print teamdata.teleDiscsPU
+##                while i <len(teamdata.teleDiscsPU):
+##                    lx.append(i+1)
+##                    ly.append(teamdata.teleDiscsPU[i])
+##                    i += 1
+##                display = lreg(lx,ly)
+##                display.get_ab()
+##                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+##                screen.blit(draw,(x+tbox.w+.5*tbox.th,y+tbox.size+.5*tbox.th-10))
+            elif tbox.type=="avgFloorPickUp" and sum(teamdata.teleFloorDiscsPU)>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.teleFloorDiscsPU
+                while i <len(teamdata.teleFloorDiscsPU):
+                    lx.append(i+1)
+                    ly.append(teamdata.teleFloorDiscsPU[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-2*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10))
+            elif tbox.type=="avgStationPickUp" and sum(teamdata.teleStationDiscsPU)>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.teleStationDiscsPU
+                while i <len(teamdata.teleStationDiscsPU):
+                    lx.append(i+1)
+                    ly.append(teamdata.teleStationDiscsPU[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-4*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10))
+            elif tbox.type=="avgTeleScore" and teamdata.hadTele>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.teleScores
+                while i <len(teamdata.teleScores):
+                    lx.append(i+1)
+                    ly.append(teamdata.teleScores[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-2*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10-325))
+            elif tbox.type=="avgTeleLowP" and sum(teamdata.teleLowP)>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.teleLowP
+                while i <len(teamdata.teleLowP):
+                    lx.append(i+1)
+                    ly.append(teamdata.teleLowP[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-2*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10-325))
+            elif tbox.type=="avgTeleMidP" and sum(teamdata.teleMidP)>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.teleMidP
+                while i <len(teamdata.teleMidP):
+                    lx.append(i+1)
+                    ly.append(teamdata.teleMidP[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-2*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10-325))
+            elif tbox.type=="avgTeleTopP" and sum(teamdata.teleTopP)>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.teleTopP
+                while i <len(teamdata.teleTopP):
+                    lx.append(i+1)
+                    ly.append(teamdata.teleTopP[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-2*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10-325))
+            elif tbox.type=="avgTelePyrP" and sum(teamdata.telePyrP)>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.telePyrP
+                while i <len(teamdata.telePyrP):
+                    lx.append(i+1)
+                    ly.append(teamdata.telePyrP[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-2*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10-325))
+            elif tbox.type=="avgHangScore" and teamdata.timesHanged>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.hangScores
+                while i <len(teamdata.hangScores):
+                    lx.append(i+1)
+                    ly.append(teamdata.hangScores[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-2*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10-325))
+            elif tbox.type=="avgSupportBot" and sum(teamdata.SupportsBot)>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.SupportsBot
+                while i <len(teamdata.SupportsBot):
+                    lx.append(i+1)
+                    ly.append(teamdata.SupportsBot[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-8*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10-325))
+            elif tbox.type=="avgScoredOnPyr" and sum(teamdata.ScoredOnPyr)>0:
+                # Get information for defensive score
+                i = 0
+                lx = []
+                ly = []
+                print teamdata.ScoredOnPyr
+                while i <len(teamdata.ScoredOnPyr):
+                    lx.append(i+1)
+                    ly.append(teamdata.ScoredOnPyr[i])
+                    i += 1
+                display = lreg(lx,ly)
+                display.get_ab()
+                draw = display.get_image(300,300,(255,255,255),(0,0,0))
+                screen.blit(draw,(x-2*tbox.w-.5*tbox.th,y+tbox.size+.5*tbox.th-10-325))
 
     # See if any changes are requested from clicks
     for textbox in t1_tboxes:
@@ -1824,7 +2099,7 @@ def search():
                         te[0] += 1
                         print "Our rank is now" + str(te[0])
                 update_wanted = True
-            if t=="do":
+            elif t=="do":
                 for te in wanted:
                     if te[1][0] == int(number): # Is the team
                         rank = te[0]
@@ -2084,7 +2359,7 @@ def search():
                     i = 0
                     x = len(team_list)
                     while i < x:
-                        if team_list[i][1].SupportsBot<item.check:
+                        if team_list[i][1].TotalSupportsBot<item.check:
                             del team_list[i]
                             x = len(team_list)
                             i -= 1
@@ -2096,7 +2371,7 @@ def search():
                     i = 0
                     x = len(team_list)
                     while i < x:
-                        if team_list[i][1].ScoredOnPyr<item.check:
+                        if team_list[i][1].TotalScoredOnPyr<item.check:
                             del team_list[i]
                             x = len(team_list)
                             i -= 1
@@ -2709,7 +2984,7 @@ tb_buttons.append(button(x=6,y=6,thickness=4,text="New",t="n"))
 tb_buttons.append(button(x=81,y=6,thickness=4,text="Open",t="o"))
 tb_buttons.append(button(x=176,y=6,thickness=4,text="Save",t="s"))
 tb_buttons.append(button(x=263,y=6,thickness=4,text="Import Data",t="i"))
-tb_buttons.append(button(x=457,y=6,thickness=4,text="Import Pit Data",t="ip"))
+#tb_buttons.append(button(x=457,y=6,thickness=4,text="Import Pit Data",t="ip"))
 #tb_buttons.append(button(x=6,y=65,thickness=4,text="Matches",t="m"))
 tb_buttons.append(button(x=6,y=100,thickness=4,text= "  Teams  ",t="t"))
 #tb_buttons.append(button(x=6,y=135,thickness=4,text="   Pit   ",t="ps"))
@@ -2743,9 +3018,9 @@ t1_tboxes.append(textbox(x=400,y=20,thickness=1,caption="Had Auto Mode:",t="pHad
 t1_tboxes.append(textbox(x=400,y=45,thickness=1,caption="Started in Auto Zone:",t="pStartInZone",fs=25,w=40))
 t1_tboxes.append(textbox(x=400,y=65,thickness=1,caption="Other Auto:",t="pOtherStrat",fs=25,w=40))
 t1_tboxes.append(textbox(x=400,y=110,thickness=1,caption="Average Auto Score:",t="avgAutoScore",fs=25,w=40))
-t1_tboxes.append(textbox(x=400,y=130,thickness=1,caption="Average Auto Low Score:",t="avgAutoLowP",fs=25,w=40))
-t1_tboxes.append(textbox(x=400,y=150,thickness=1,caption="Average Auto Middle Score:",t="avgAutoMidP",fs=25,w=40))
-t1_tboxes.append(textbox(x=400,y=170,thickness=1,caption="Average Auto Top Score:",t="avgAutoTopP",fs=25,w=40))
+t1_tboxes.append(textbox(x=400,y=130,thickness=1,caption="Average Auto Scored in Low:",t="avgAutoLowP",fs=25,w=40))
+t1_tboxes.append(textbox(x=400,y=150,thickness=1,caption="Average Auto Scored in Mid:",t="avgAutoMidP",fs=25,w=40))
+t1_tboxes.append(textbox(x=400,y=170,thickness=1,caption="Average Auto Scored in Top:",t="avgAutoTopP",fs=25,w=40))
 
 t1_tboxes.append(textbox(x=400,y=205,thickness=1,caption="Matches/Disabled Percentage:",t="pWasDisabled",fs=25,w=40))
 t1_tboxes.append(textbox(x=400,y=225,thickness=1,caption="Average Times Disabled per Match:",t="avgDisabled",fs=25,w=40))
@@ -2754,10 +3029,10 @@ t1_tboxes.append(textbox(x=400,y=265,thickness=1,caption="Discs Picked Up to Dis
 t1_tboxes.append(textbox(x=400,y=285,thickness=1,caption="Average Discs Picked up from Floor:",t="avgFloorPickUp",fs=25,w=40))
 t1_tboxes.append(textbox(x=400,y=305,thickness=1,caption="Average Discs Picked up from Station:",t="avgStationPickUp",fs=25,w=40))
 t1_tboxes.append(textbox(x=400,y=325,thickness=1,caption="Average Tele Score:",t="avgTeleScore",fs=25,w=40))
-t1_tboxes.append(textbox(x=400,y=345,thickness=1,caption="Average Scored on Bottom:",t="avgTeleLowP",fs=25,w=40))
-t1_tboxes.append(textbox(x=400,y=365,thickness=1,caption="Average Scored on Middle:",t="avgTeleMidP",fs=25,w=40))
-t1_tboxes.append(textbox(x=400,y=385,thickness=1,caption="Average Scored on Top:",t="avgTeleTopP",fs=25,w=40))
-t1_tboxes.append(textbox(x=400,y=405,thickness=1,caption="Average Scored on Pyramid:",t="avgTelePyrP",fs=25,w=40))
+t1_tboxes.append(textbox(x=400,y=345,thickness=1,caption="Average Scored in Low:",t="avgTeleLowP",fs=25,w=40))
+t1_tboxes.append(textbox(x=400,y=365,thickness=1,caption="Average Scored in Mid:",t="avgTeleMidP",fs=25,w=40))
+t1_tboxes.append(textbox(x=400,y=385,thickness=1,caption="Average Scored in Top:",t="avgTeleTopP",fs=25,w=40))
+t1_tboxes.append(textbox(x=400,y=405,thickness=1,caption="Average Scored in Pyramid:",t="avgTelePyrP",fs=25,w=40))
 
 t1_tboxes.append(textbox(x=400,y=445,thickness=1,caption="Average Hang Score:",t="avgHangScore",fs=24,w=40))
 t1_tboxes.append(textbox(x=400,y=465,thickness=1,caption="Successful Hangs to Attempts:",t="rSuccToAtt",fs=25,w=40))
@@ -2961,6 +3236,17 @@ t7_scroll = scroller(pygame.Surface((100,2000)),maxheight=500,x=410,y=25,t="")
 t7_buttons.append(button(x=410,y=4,thickness=1,text="",t="tlup",w=100,h=20))
 t7_buttons.append(button(x=410,y=530,thickness=1,text="",t="tldo",w=100,h=20))
 
+#If want to import data from last session
+root.focus()
+newval = tkSimpleDialog.askstring("Prompt","Reload Previous Data? (y / n)",parent=root,initialvalue="y")
+root.withdraw()
+if newval == "y":
+    Reload = True
+    for but in tb_buttons:
+        if but.type == "i":
+            but.click()
+    Reload = False
+
 screen.fill(bgcolor)
 
 #draw top bar
@@ -2986,8 +3272,10 @@ while running:
                 if mpos[0]>=but.x and mpos[0]<=but.x+but.w and mpos[1]>=but.y and mpos[1]<=but.y+but.h:
                     but.click()
     key = pygame.key.get_pressed()
-    if key[pygame.K_ESCAPE]: running = False
-
+    if key[pygame.K_ESCAPE]:
+        running = False
+        print "ESC has been pressed"
+            
     # draw the tab
     screen.fill(bgcolor,[x0,y0,WIDTH-x0,HEIGHT-y0])#Fill in case of update
     if tab == 1:    #Team Data
