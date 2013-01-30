@@ -21,7 +21,7 @@ running = True
 TeamCalc = False  #Whether or not the data was calculated (if it hasn't been, you can't view team data)
 PitCalc  = False  #whether or not the pitdata was calculated
 HEIGHT = 700
-WIDTH = 1100
+WIDTH = 1200
 x0 = 160  # initial x-coordinate for the TAB
 y0 = 65  # initial y-coordinate for the TAB
 bgcolor = (0,51,0)
@@ -34,7 +34,7 @@ root.withdraw()
 
 #screen = pygame.display.set_mode((WIDTH,HEIGHT),pygame.FULLSCREEN)
 screen = pygame.display.set_mode((WIDTH,HEIGHT))
-pygame.display.set_caption("ultimAteAscent Chadabase_0.3")
+pygame.display.set_caption("ultimAteAscent Chadabase_0.4")
 tab = 0     # The tab displayed:
             # 0 - blank
             # 1 - Team
@@ -476,30 +476,30 @@ class Entry():
         self.AllianceColor = data[2]                                #The color for the match
 
         self.StartInAutoZone = bool(data[3])                           #if robot starts completely in Autonomous Zone
-        self.autoDiscs = data[4]                                    #number of discs picked up in auto
-        self.autoTopP = data[5]                                     #number of scores in the Top
-        self.autoMidP = data[6]                                     #number of scores in the Middle
-        self.autoLowP = data[7]                                     #number of scores in the Low
+        self.autoDiscs = float(data[4])                                  #number of discs picked up in auto
+        self.autoTopP = float(data[5])                                  #number of scores in the Top
+        self.autoMidP = float(data[6])                                    #number of scores in the Middle
+        self.autoLowP = float(data[7])                                    #number of scores in the Low
         self.Other = bool(data[8])                                        #if robot had a different strategy during autonomous
 
-        self.disabledCount = data[9]                                #number times robot was disabled during Tele-Op
+        self.disabledCount = float(data[9])                                #number times robot was disabled during Tele-Op
         self.ScoreFromNotZone = bool(data[10])                           #if robot scores from beyond the auto zone
-        self.teleFloorDiscs = data[11]                              #number of discs picked up off the floor
-        self.teleStationDiscs = data[12]                            #number of discs picked up off the ground
-        self.telePyrP = data[13]                                    #number of scores in the pyramid
-        self.teleTopP = data[14]                                    #number of scores in the top
-        self.teleMidP = data[15]                                    #number of scores in the mid
-        self.teleLowP = data[16]                                    #number of scores in the low
+        self.teleFloorDiscs = float(data[11])                              #number of discs picked up off the floor
+        self.teleStationDiscs = float(data[12])                            #number of discs picked up off the ground
+        self.telePyrP = float(data[13])                                   #number of scores in the pyramid
+        self.teleTopP = float(data[14])                                    #number of scores in the top
+        self.teleMidP = float(data[15])                                   #number of scores in the mid
+        self.teleLowP = float(data[16])                                    #number of scores in the low
 
         self.ScoresWhileOnPyr = bool(data[17])                            #if robot scored points while climbing
         self.SupportsAnotherBot = bool(data[18])                          #if robot supported another bot while climbing
-        self.HangLevel = data[19] + 1                               #level robot got to, whether it was successfuly or not
+        self.HangLevel = float(data[19] + 1)                               #level robot got to, whether it was successfuly or not
         self.HangSuccess = bool(data[20])                                 #if robot was actually successful at climbing
 
         self.Defensive = bool(data[21])                                   #if robot played defensively
         self.Assistive = bool(data[22])                                   #if robot played assistively
-        self.Technical = data[23]                                   #number of technical fouls incurred
-        self.Regular = data[24]                                     #number of regular fouls incurred
+        self.Technical = float(data[23])                                   #number of technical fouls incurred
+        self.Regular = float(data[24])                                     #number of regular fouls incurred
         self.YellowPenalty = bool(data[25])                               #if a yellow_card was received
         self.RedPenalty = bool(data[26])                                  #if a red_card was received
 
@@ -665,7 +665,7 @@ class Team():
         self.avgAst = sum(self.aScores)/len(self.matches) if self.numAst > 0 else 0
 
     def get_avg_Hang(self):
-        self.timesHanged = sum(self.hangSuccess)
+        self.timesHanged = float(sum(self.hangSuccess))
         for var in self.hangSuccess:
             if var == 0:
                 self.attemptedHang += 1
@@ -673,13 +673,17 @@ class Team():
         self.hangsSucctoAtt = self.timesHanged/self.attemptedHang if self.attemptedHang else 0
         self.avgHangScore = sum(self.hangScores)/self.timesHanged if self.timesHanged else 0
 
-        self.TotalSupportsBot = sum(self.SupportsBot)
-        self.TotalScoredOnPyr = sum(self.ScoredOnPyr)
+        self.TotalSupportsBot = float(sum(self.SupportsBot))
+        self.TotalScoredOnPyr = float(sum(self.ScoredOnPyr))
 
     def get_avg_AutoTele(self):
         self.avgAuto = sum(self.autoScores)/self.hadAuto if self.hadAuto else 0
         self.avgTele = sum(self.teleScores)/self.hadTele if self.hadTele else 0
         self.discsPUtoScored = sum(self.DiscsPU)/sum(self.teleDiscsScored) if sum(self.teleDiscsScored)>0 else 0
+
+    def getAttribute(self, source):
+        dataSource = getattr(self, source)
+        return dataSource
 
 #----------------------------------------------------------------------------------------------------
 # Match Class
@@ -917,8 +921,8 @@ def calculate():
 
                 t.avgRegFoul.append(entry.Regular)
                 t.avgTechFoul.append(entry.Technical)
-                t.hadRegFoul += int(entry.HasTechFoul)
-                t.hadTechFoul += int(entry.HasRegFoul)
+                t.hadRegFoul += int(entry.HasRegFoul)
+                t.hadTechFoul += int(entry.HasTechFoul)
                 t.hadYellow += int(entry.YellowPenalty)
                 t.hadRed += int(entry.RedPenalty)
                 t.Defensive += int(entry.Defensive)
@@ -945,7 +949,7 @@ def calculate():
             Teams[len(Teams)-1].hadAuto = Teams[len(Teams)-1].hadAuto + 1 if (entry.ScoreInAuto or entry.Other) else Teams[len(Teams)-1].hadAuto
             Teams[len(Teams)-1].StartedInAuto += int(entry.StartInAutoZone)
             Teams[len(Teams)-1].OtherAutoStrat += int(entry.Other)
-	    Teams[len(Teams)-1].autoDiscsScored.append(entry.AutoDiscsScored)
+            Teams[len(Teams)-1].autoDiscsScored.append(entry.AutoDiscsScored)
             Teams[len(Teams)-1].autoDiscsPU.append(entry.autoDiscs)
             Teams[len(Teams)-1].autoTopP.append(entry.autoTopP)
             Teams[len(Teams)-1].autoMidP.append(entry.autoMidP)
@@ -969,8 +973,8 @@ def calculate():
 
             Teams[len(Teams)-1].avgRegFoul.append(entry.Regular)
             Teams[len(Teams)-1].avgTechFoul.append(entry.Technical)
-            Teams[len(Teams)-1].hadRegFoul += int(entry.HasTechFoul)
-            Teams[len(Teams)-1].hadTechFoul += int(entry.HasRegFoul)
+            Teams[len(Teams)-1].hadRegFoul += int(entry.HasRegFoul)
+            Teams[len(Teams)-1].hadTechFoul += int(entry.HasTechFoul)
             Teams[len(Teams)-1].hadYellow += int(entry.YellowPenalty)
             Teams[len(Teams)-1].hadRed += int(entry.RedPenalty)
             Teams[len(Teams)-1].Defensive += int(entry.Defensive)
@@ -1297,43 +1301,43 @@ def team_data():
                 elif textbox.type == "pOff": textbox.value = str(int(100*teamdata.numOff/len(teamdata.matches))) + "%"
                 elif textbox.type == "pDef": textbox.value = str(int(100*teamdata.numDef/len(teamdata.matches))) + "%"
                 elif textbox.type == "pAst": textbox.value = str(int(100*teamdata.numAst/len(teamdata.matches))) + "%"
-                elif textbox.type == "avgOff": textbox.value = teamdata.avgOff
-                elif textbox.type == "avgDef": textbox.value = teamdata.avgDef
-                elif textbox.type == "avgAst": textbox.value = teamdata.avgAst
-                elif textbox.type == "avgTotal": textbox.value = teamdata.avg_tScore
-                elif textbox.type == "WeightedOff": textbox.value = teamdata.avg_woScore
-                elif textbox.type == "WeightedDef": textbox.value = teamdata.avg_wdScore
-                elif textbox.type == "WeightedAst": textbox.value = teamdata.avg_waScore
+                elif textbox.type == "avgOff": textbox.value = round(teamdata.avgOff,2)
+                elif textbox.type == "avgDef": textbox.value = round(teamdata.avgDef,2)
+                elif textbox.type == "avgAst": textbox.value = round(teamdata.avgAst,2)
+                elif textbox.type == "avgTotal": textbox.value = round(teamdata.avg_tScore,2)
+                elif textbox.type == "WeightedOff": textbox.value = round(teamdata.avg_woScore,2)
+                elif textbox.type == "WeightedDef": textbox.value = round(teamdata.avg_wdScore,2)
+                elif textbox.type == "WeightedAst": textbox.value = round(teamdata.avg_waScore,2)
 
                 elif textbox.type == "pHadAuto": textbox.value = str(int(100*teamdata.hadAuto/len(teamdata.matches))) + "%"
                 elif textbox.type == "pStartInZone": textbox.value = str(int(100*teamdata.StartedInAuto)/len(teamdata.matches)) + "%"
                 elif textbox.type == "pOtherStrat": textbox.value = str(int(100*teamdata.OtherAutoStrat)/len(teamdata.matches)) + "%"
-                elif textbox.type == "avgAutoScore": textbox.value = str(teamdata.avgAuto)
-                elif textbox.type == "avgAutoTopP": textbox.value = str(teamdata.avg_autoTopP)
-                elif textbox.type == "avgAutoMidP": textbox.value = str(teamdata.avg_autoMidP)
-                elif textbox.type == "avgAutoLowP": textbox.value = str(teamdata.avg_autoLowP)
+                elif textbox.type == "avgAutoScore": textbox.value = str(round(teamdata.avgAuto,2))
+                elif textbox.type == "avgAutoTopP": textbox.value = str(round(teamdata.avg_autoTopP,2))
+                elif textbox.type == "avgAutoMidP": textbox.value = str(round(teamdata.avg_autoMidP,2))
+                elif textbox.type == "avgAutoLowP": textbox.value = str(round(teamdata.avg_autoLowP,2))
 
                 elif textbox.type == "pWasDisabled": textbox.value = str(int(100*teamdata.disabled)/len(teamdata.matches)) + "%"
-                elif textbox.type == "avgDisabled": textbox.value = str(int(sum(teamdata.disabledState)/len(teamdata.disabledState)))
-                elif textbox.type == "totalDisabled": textbox.value = str(teamdata.disabledCount)
-                elif textbox.type == "avgTotalPickUp": textbox.value = str(teamdata.avg_DiscsPU)
-                elif textbox.type == "avgFloorPickUp": textbox.value = str(teamdata.avg_FloorDiscsPU)
-                elif textbox.type == "avgStationPickUp": textbox.value = str(teamdata.avg_StationDiscsPU)
-                elif textbox.type == "rPickUpScored": textbox.value = str(teamdata.discsPUtoScored) + " : 1"
-                elif textbox.type == "avgTeleScore": textbox.value = str(teamdata.avgTele)
-                elif textbox.type == "avgTelePyrP": textbox.value = str(teamdata.avg_telePyrP)
-                elif textbox.type == "avgTeleTopP": textbox.value = str(teamdata.avg_teleTopP)
-                elif textbox.type == "avgTeleMidP": textbox.value = str(teamdata.avg_teleMidP)
-                elif textbox.type == "avgTeleLowP": textbox.value = str(teamdata.avg_teleLowP)
+                elif textbox.type == "avgDisabled": textbox.value = str(round(float(sum(teamdata.disabledState)/len(teamdata.disabledState)),2))
+                elif textbox.type == "totalDisabled": textbox.value = str(round(teamdata.disabledCount,2))
+                elif textbox.type == "avgTotalPickUp": textbox.value = str(round(teamdata.avg_DiscsPU,2))
+                elif textbox.type == "avgFloorPickUp": textbox.value = str(round(teamdata.avg_FloorDiscsPU,2))
+                elif textbox.type == "avgStationPickUp": textbox.value = str(round(teamdata.avg_StationDiscsPU,2))
+                elif textbox.type == "rPickUpScored": textbox.value = str(round(teamdata.discsPUtoScored,2)) + " : 1"
+                elif textbox.type == "avgTeleScore": textbox.value = str(round(teamdata.avgTele,2))
+                elif textbox.type == "avgTelePyrP": textbox.value = str(round(teamdata.avg_telePyrP,2))
+                elif textbox.type == "avgTeleTopP": textbox.value = str(round(teamdata.avg_teleTopP,2))
+                elif textbox.type == "avgTeleMidP": textbox.value = str(round(teamdata.avg_teleMidP,2))
+                elif textbox.type == "avgTeleLowP": textbox.value = str(round(teamdata.avg_teleLowP,2))
 
-                elif textbox.type == "avgHangScore": textbox.value = str(teamdata.avgHangScore)
-                elif textbox.type == "rHangSuccToAtt": textbox.value = str(teamdata.hangsSucctoAtt) + " : 1"
+                elif textbox.type == "avgHangScore": textbox.value = str(round(teamdata.avgHangScore,2))
+                elif textbox.type == "rHangSuccToAtt": textbox.value = str(round(teamdata.hangsSucctoAtt,2)) + " : 1"
                 elif textbox.type == "pHanged": textbox.value = str(int(100*teamdata.timesHanged)/len(teamdata.matches)) + "%"
-                elif textbox.type == "avgSupportBot": textbox.value = str(int(sum(teamdata.SupportsBot)/len(teamdata.SupportsBot)))
-                elif textbox.type == "avgScoredOnPyr": textbox.value = str(int(sum(teamdata.ScoredOnPyr)/len(teamdata.ScoredOnPyr)))
+                elif textbox.type == "avgSupportBot": textbox.value = str(round(sum(teamdata.SupportsBot)/len(teamdata.SupportsBot),2))
+                elif textbox.type == "avgScoredOnPyr": textbox.value = str(round(sum(teamdata.ScoredOnPyr)/len(teamdata.ScoredOnPyr),2))
 
-                elif textbox.type == "avgRegFoul": textbox.value = str(int(sum(teamdata.avgRegFoul)/len(teamdata.avgRegFoul)))
-                elif textbox.type == "avgTechFoul": textbox.value = str(int(sum(teamdata.avgTechFoul)/len(teamdata.avgTechFoul)))
+                elif textbox.type == "avgRegFoul": textbox.value = str(round(sum(teamdata.avgRegFoul)/len(teamdata.avgRegFoul),2))
+                elif textbox.type == "avgTechFoul": textbox.value = str(round(sum(teamdata.avgTechFoul)/len(teamdata.avgTechFoul),2))
                 elif textbox.type == "pDefensive": textbox.value = str(int(100*teamdata.Defensive/len(teamdata.matches))) + "%"
                 elif textbox.type == "pAssistive": textbox.value = str(int(100*teamdata.Assistive/len(teamdata.matches))) + "%"
                 elif textbox.type == "pYellow": textbox.value = str(int(100*teamdata.hadYellow/len(teamdata.matches))) + "%"
@@ -1779,18 +1783,18 @@ def ratings():
     t3_scrolls[0].surface.fill(bgcolor)
     for rank in off_rank:
         n += 1
-        text = font.render("#"+str(n)+"--Team "+str(rank[1])+": " + str(rank[0]),True,txcolor,bgcolor)
+        text = font.render("#"+str(n)+"--Team "+str(rank[1])+": " + str(round(rank[0],2)),True,txcolor,bgcolor)
         t3_scrolls[0].surface.blit(text,(x,y))
         y += 20
         for team in Teams:
             if team.number == rank[1]: team.off_rank = n
     t3_scrolls[0].draw(screen)
-    pygame.draw.line(screen,(0,0,0),(302,65),(302,HEIGHT),1)
+    pygame.draw.line(screen,(0,0,0),(365,65),(365,HEIGHT),1)
 
     # Draw Average Defensive Score
     font = pygame.font.Font(None,20)
     text = font.render("Avg Defensive Score",True,txcolor,bgcolor)
-    screen.blit(text,(305,65))
+    screen.blit(text,(370,65))
     # Draw Avg Def
     x = 0
     y = 0
@@ -1798,18 +1802,18 @@ def ratings():
     t3_scrolls[1].surface.fill(bgcolor)
     for rank in def_rank:
         n += 1
-        text = font.render("#"+str(n)+"--Team "+str(rank[1])+": " + str(rank[0]),True,txcolor,bgcolor)
+        text = font.render("#"+str(n)+"--Team "+str(rank[1])+": " + str(round(rank[0],2)),True,txcolor,bgcolor)
         t3_scrolls[1].surface.blit(text,(x,y))
         y += 20
         for team in Teams:
             if team.number == rank[1]: team.def_rank = n
     t3_scrolls[1].draw(screen)
-    pygame.draw.line(screen,(0,0,0),(450,65),(460,HEIGHT),1)
+    pygame.draw.line(screen,(0,0,0),(575,65),(575,HEIGHT),1)
 
     # Draw Average Assistive score
     font = pygame.font.Font(None,20)
     text = font.render("Avg Assistive Score",True,txcolor,bgcolor)
-    screen.blit(text,(460,65))
+    screen.blit(text,(580,65))
     # Draw Avg Ast
     x = 0
     y = 0
@@ -1817,25 +1821,25 @@ def ratings():
     t3_scrolls[2].surface.fill(bgcolor)
     for rank in ast_rank:
         n += 1
-        text = font.render("#"+str(n)+"--Team "+str(rank[1])+": " + str(rank[0]),True,txcolor,bgcolor)
+        text = font.render("#"+str(n)+"--Team "+str(rank[1])+": " + str(round(rank[0],2)),True,txcolor,bgcolor)
         t3_scrolls[2].surface.blit(text,(x,y))
         y += 20
         for team in Teams:
             if team.number == rank[1]: team.ast_rank = n
     t3_scrolls[2].draw(screen)
-    pygame.draw.line(screen,(0,0,0),(605,65),(605,HEIGHT),1)
+    pygame.draw.line(screen,(0,0,0),(785,65),(785,HEIGHT),1)
 
     # Draw Average total score
     font = pygame.font.Font(None,20)
     text = font.render("Avg Total Score",True,txcolor,bgcolor)
-    screen.blit(text,(607,65))
+    screen.blit(text,(790,65))
     x = 0
     y = 0
     n=0
     t3_scrolls[3].surface.fill(bgcolor)
     for rank in tot_rank:
         n += 1
-        text = font.render("#"+str(n)+"--Team "+str(rank[1])+": " + str(rank[0]),True,txcolor,bgcolor)
+        text = font.render("#"+str(n)+"--Team "+str(rank[1])+": " + str(round(rank[0],2)),True,txcolor,bgcolor)
         t3_scrolls[3].surface.blit(text,(x,y))
         y += 20
         for team in Teams:
@@ -1939,18 +1943,18 @@ def ratings2():
     t4_scrolls[0].surface.fill(bgcolor)
     for rank in auto_rank:
         n += 1
-        text = font.render("#"+str(n)+"--Team "+str(rank[1])+": " + str(rank[0]),True,txcolor,bgcolor)
+        text = font.render("#"+str(n)+"--Team "+str(rank[1])+": " + str(round(rank[0],2)),True,txcolor,bgcolor)
         t4_scrolls[0].surface.blit(text,(x,y))
         y += 20
         for team in Teams:
             if team.number == rank[1]: team.auto_rank = n
     t4_scrolls[0].draw(screen)
-    pygame.draw.line(screen,(0,0,0),(302,65),(302,HEIGHT),1)
+    pygame.draw.line(screen,(0,0,0),(365,65),(365,HEIGHT),1)
 
     # Draw Average Tele Score
     font = pygame.font.Font(None,20)
     text = font.render("Avg Tele Score",True,txcolor,bgcolor)
-    screen.blit(text,(305,65))
+    screen.blit(text,(370,65))
     # Draw Avg Tel
     x = 0
     y = 0
@@ -1958,18 +1962,18 @@ def ratings2():
     t4_scrolls[1].surface.fill(bgcolor)
     for rank in tel_rank:
         n += 1
-        text = font.render("#"+str(n)+"--Team "+str(rank[1])+": " + str(rank[0]),True,txcolor,bgcolor)
+        text = font.render("#"+str(n)+"--Team "+str(rank[1])+": " + str(round(rank[0],2)),True,txcolor,bgcolor)
         t4_scrolls[1].surface.blit(text,(x,y))
         y += 20
         for team in Teams:
             if team.number == rank[1]: team.yrl_rank = n
     t4_scrolls[1].draw(screen)
-    pygame.draw.line(screen,(0,0,0),(450,65),(460,HEIGHT),1)
+    pygame.draw.line(screen,(0,0,0),(575,65),(575,HEIGHT),1)
 
     # Draw Average Bridge score
     font = pygame.font.Font(None,20)
     text = font.render("Avg Hang Score",True,txcolor,bgcolor)
-    screen.blit(text,(460,65))
+    screen.blit(text,(580,65))
     # Draw Avg Ast
     x = 0
     y = 0
@@ -1977,13 +1981,13 @@ def ratings2():
     t4_scrolls[2].surface.fill(bgcolor)
     for rank in pyr_rank:
         n += 1
-        text = font.render("#"+str(n)+"--Team "+str(rank[1])+": " + str(rank[0]),True,txcolor,bgcolor)
+        text = font.render("#"+str(n)+"--Team "+str(rank[1])+": " + str(round(rank[0],2)),True,txcolor,bgcolor)
         t4_scrolls[2].surface.blit(text,(x,y))
         y += 20
         for team in Teams:
             if team.number == rank[1]: team.pyr_rank = n
     t4_scrolls[2].draw(screen)
-    pygame.draw.line(screen,(0,0,0),(605,65),(605,HEIGHT),1)
+    #pygame.draw.line(screen,(0,0,0),(785,65),(785,HEIGHT),1)
 
     for button in t4_buttons:
         button.draw(screen)
@@ -2008,248 +2012,37 @@ def ratings2():
 #  -- used in looking for specifics from the search tab
 #----------------------------------------------------------------------------------------------------
 
-def greaterOff(item):
+def searchGreater(item):
     global team_list
-
     try:
-        i = 0
-        while i < len(team_list):
-            if team_list[i][1].avgOff < int(item.value):
-                del team_list[i]
-                i -= 1
-            i += 1
-    except:
-        item.value = 0
-
-def greaterDef(item):
-    global team_list
-    
-    try:
-        i = 0
-        while i < len(team_list):
-            if team_list[i][1].avgDef < int(item.value):
-                del team_list[i]
-                i -= 1
-            i += 1
+        team_list = filter(lambda team:team[1].getAttribute(item.type)>=int(item.value), team_list)
 
     except:
         item.value = 0
 
-def greaterAst(item):
-    global team_list
-    
-    try:
-        i = 0
-        while i < len(team_list):
-            if team_list[i][1].avgAst < int(item.value):
-                del team_list[i]
-                i -= 1
-            i += 1
-    except:
-        item.value = 0
-
-def wasOff(item):
-    global team_list
-    
-    try:
-        i = 0
-        while i < len(team_list):
-            if team_list[i][i].numOff<item.check:
-                del team_list[i]
-                i -= 1
-            i += 1
-
-    except:
-        item.value = 0
-
-def wasDef(item):
-    global team_list
-    
-    try:
-        i = 0
-        while i < len(team_list):
-            if team_list[i][1].numDef<item.check:
-                del team_list[i]
-                i -= 1
-            i += 1
-
-    except:
-        item.value = 0
-
-def wasAst(item):
-    global team_list
-    
-    try:
-        i = 0
-        while i < len(team_list):
-            if team_list[i][1].numAst<item.check:
-                del team_list[i]
-                i -= 1
-            i += 1
-
-    except:
-        item.value = 0
-
-def autoScored(item):
+def searchHas(item):
     global team_list
     try:
-        i = 0
-        while i < len(team_list):
-            if team_list[i][1].scoredAuto<item.check:
-                del team_list[i]
-                i -= 1
-            i += 1
+        if item.check == 1:
+            team_list = filter(lambda team:team[1].getAttribute(item.type)>=1, team_list)
 
     except:
-        item.value = 0
+        item.check = 0
 
-def autoStartInZone(item):
+def searchNever(item):
     global team_list
     try:
-        i = 0
-        while i < len(team_list):
-            if team_list[i][1].StartedInAuto<item.check:
-                del team_list[i]
-                i -= 1
-            i += 1
+        if item.check == 1:
+            team_list = filter(lambda team:team[1].getAttribute(item.type) == 0, team_list)
 
     except:
-        item.value = 0
+        item.check = 0
 
-def autoOther(item):
-    global team_list
-    try:
-        i = 0
-        while i < len(team_list):
-            if team_list[i][1].OtherAutoStrat<item.check:
-                del team_list[i]
-                i -= 1
-            i += 1
-
-    except:
-        item.value = 0
-def successHang(item):
-    global team_list
-    
-    try:
-        i = 0
-        while i < len(team_list):
-            if team_list[i][1].timesHanged<item.check:
-                del team_list[i]
-                i -= 1
-            i += 1
-
-    except:
-        item.value = 0
-
-def greaterHangScore(item):
-    global team_list
-    try:
-        i = 0
-        while i < len(team_list):
-            if team_list[i][1].avgHangScore < int(item.value):
-                del team_list[i]
-                i -= 1
-            i += 1
-
-    except:
-        item.value = 0
-
-def supportBot(item):
-    global team_list
-    try:
-        i = 0
-        while i < len(team_list):
-            if team_list[i][1].TotalSupportsBot<item.check:
-                del team_list[i]
-                i -= 1
-            i += 1
-
-    except:
-        item.value = 0
-def scoredOnPyr(item):
-    global team_list
-    try:
-        i = 0
-        while i < len(team_list):
-            if team_list[i][1].TotalScoredOnPyr<item.check:
-                del team_list[i]
-                i -= 1
-            i += 1
-
-    except:
-        item.value = 0
-
-def neverDisabled(item):
-    global team_list
-    try:
-        i = 0
-        while i < len(team_list):
-            if item.check == 1 and team_list[i][1].disabled > 0:
-                del team_list[i]
-                i -= 1
-            i += 1
-
-    except:
-        item.value = 0
-
-def noRegFoul(item):
-    global team_list
-    try:
-        i = 0
-        while i < len(team_list):
-            if item.check == 1 and team_list[i][1].hadRegFoul > 0:
-                del team_list[i]
-                i -= 1
-            i += 1
-
-    except:
-        item.value = 0
-
-def noTechFoul(item):
-    global team_list
-    try:
-        i = 0
-        while i < len(team_list):
-            if item.check == 1 and team_list[i][1].hadTechFoul > 0:
-                del team_list[i]
-                i -= 1
-            i += 1
-
-    except:
-        item.value = 0
-
-def noYellow(item):
-    global team_list
-    try:
-        i = 0
-        while i < len(team_list):
-            if item.check == 1 and team_list[i][1].hadYellow > 0:
-                del team_list[i]
-                i -= 1
-            i += 1
-
-    except:
-        item.value = 0
-
-def noRed(item):
-    global team_list
-    try:
-        i = 0
-        while i < len(team_list):
-            if item.check == 1 and team_list[i][1].hadRed > 0:
-                del team_list[i]
-                i -= 1
-            i += 1
-
-    except:
-        item.value = 0
-
-Searches = {"greaterOff":greaterOff, "greaterDef":greaterDef, "greaterAst":greaterAst, "wasOff":wasOff, "wasDef":wasDef, "wasAst":wasAst, \
-            "autoScored":autoScored, "autoStartInZone":autoStartInZone, "autoOther":autoOther, \
-            "successHang":successHang, "greaterHangScore":greaterHangScore, \
-            "supportBot":supportBot, "scoredOnPyr":scoredOnPyr, "neverDisabled":neverDisabled, \
-            "noRegFoul":noRegFoul, "noTechFoul":noTechFoul, "noYellow":noYellow, "noRed":noRed}
+Searches = {"avgOff":searchGreater, "avgDef":searchGreater, "avgAst":searchGreater, "numOff":searchHas, "numDef":searchHas, "numAst":searchHas, \
+            "scoredAuto":searchHas, "StartedInAuto":searchHas, "OtherAutoStrat":searchHas, \
+            "timesHanged":searchHas, "avgHangScore":searchGreater, \
+            "TotalSupportsBot":searchHas, "TotalScoredOnPyr":searchHas, "disabledCount":searchNever, \
+            "hadRegFoul":searchNever, "hadTechFoul":searchNever, "hadYellow":searchNever, "hadRed":searchNever}
 
 #----------------------------------------------------------------------------------------------------
 # Search
@@ -3047,7 +2840,7 @@ t1_tboxes.append(textbox(x=0,y=340,thickness=1,caption="Defensive Rank:",t="rank
 t1_tboxes.append(textbox(x=0,y=360,thickness=1,caption="Assistive Rank:",t="rankAst",fs=25,w=40))
 t1_tboxes.append(textbox(x=0,y=380,thickness=1,caption="Total Rank:",t="rankTot",fs=25,w=40))
 #other ranks
-t1_pic = Picture(x=680,y=0)
+t1_pic = Picture(x=700,y=0)
 
 t1_tboxes.append(textbox(x=400,y=20,thickness=1,caption="Had Auto Mode:",t="pHadAuto",fs=25,w=40))
 t1_tboxes.append(textbox(x=400,y=45,thickness=1,caption="Started in Auto Zone:",t="pStartInZone",fs=25,w=40))
@@ -3070,7 +2863,7 @@ t1_tboxes.append(textbox(x=400,y=385,thickness=1,caption="Average Scored in Top:
 t1_tboxes.append(textbox(x=400,y=405,thickness=1,caption="Average Scored in Pyramid:",t="avgTelePyrP",fs=25,w=40))
 
 t1_tboxes.append(textbox(x=400,y=445,thickness=1,caption="Average Hang Score:",t="avgHangScore",fs=24,w=40))
-t1_tboxes.append(textbox(x=400,y=465,thickness=1,caption="Successful Hangs to Attempts:",t="rSuccToAtt",fs=25,w=40))
+t1_tboxes.append(textbox(x=400,y=465,thickness=1,caption="Successful Hangs to Attempts:",t="rHangSuccToAtt",fs=25,w=40))
 t1_tboxes.append(textbox(x=400,y=485,thickness=1,caption="Robot Hung from Pyramid:",t="pHanged",fs=25,w=40))
 t1_tboxes.append(textbox(x=400,y=505,thickness=1,caption="Average Supports of Another Bot while Hanging:",t="avgSupportBot",fs=25,w=40))
 t1_tboxes.append(textbox(x=400,y=525,thickness=1,caption="Average Disc Scores while Hanging:",t="avgScoredOnPyr",fs=25,w=40))
@@ -3104,49 +2897,49 @@ t1_tboxes.append(textbox(x=0,y=525,thickness=1,caption="Received Red Card:",t="p
 ##t2_tboxes.append(textbox(x=0,y=440,thickness=1,caption="How many years have they played:",t="exp3",fs=30,w=50))
 
 #tab3 stuff
-t3_scrolls.append(scroller(pygame.Surface((143,2000)),maxheight=500,x=160,y=105,t="")) #Offensive Score Scroller
-t3_buttons.append(button(x=160,y=85,thickness=1,text="",t="offup",w=143,h=20)) #scroll offensive score up
-t3_buttons.append(button(x=160,y=605,thickness=1,text="",t="offdo",w=143,h=20)) #scroll offensive score down
-t3_scrolls.append(scroller(pygame.Surface((143,2000)),maxheight=500,x=305,y=105,t="")) #Defensive Score Scroller
-t3_buttons.append(button(x=305,y=85,thickness=1,text="",t="defup",w=143,h=20))#scroll defensive score up
-t3_buttons.append(button(x=305,y=605,thickness=1,text="",t="defdo",w=143,h=20))#scroll defensive score down
-t3_scrolls.append(scroller(pygame.Surface((143,2000)),maxheight=500,x=455,y=105,t="")) #Assistive Score Scroller
-t3_buttons.append(button(x=455,y=85,thickness=1,text="",t="astup",w=143,h=20))#scroll assistive score up
-t3_buttons.append(button(x=455,y=605,thickness=1,text="",t="astdo",w=143,h=20))#scroll assistive score down
-t3_scrolls.append(scroller(pygame.Surface((143,2000)),maxheight=500,x=605,y=105,t="")) #Total Score Scroller
-t3_buttons.append(button(x=605,y=85,thickness=1,text="",t="totup",w=143,h=20))#scroll total score up
-t3_buttons.append(button(x=605,y=605,thickness=1,text="",t="totdo",w=143,h=20))#scroll total score down
+t3_scrolls.append(scroller(pygame.Surface((200,2000)),maxheight=500,x=160,y=105,t="")) #Offensive Score Scroller
+t3_buttons.append(button(x=160,y=85,thickness=1,text="",t="offup",w=200,h=20)) #scroll offensive score up
+t3_buttons.append(button(x=160,y=605,thickness=1,text="",t="offdo",w=200,h=20)) #scroll offensive score down
+t3_scrolls.append(scroller(pygame.Surface((200,2000)),maxheight=500,x=370,y=105,t="")) #Defensive Score Scroller
+t3_buttons.append(button(x=370,y=85,thickness=1,text="",t="defup",w=200,h=20))#scroll defensive score up
+t3_buttons.append(button(x=370,y=605,thickness=1,text="",t="defdo",w=200,h=20))#scroll defensive score down
+t3_scrolls.append(scroller(pygame.Surface((200,2000)),maxheight=500,x=580,y=105,t="")) #Assistive Score Scroller
+t3_buttons.append(button(x=580,y=85,thickness=1,text="",t="astup",w=200,h=20))#scroll assistive score up
+t3_buttons.append(button(x=580,y=605,thickness=1,text="",t="astdo",w=200,h=20))#scroll assistive score down
+t3_scrolls.append(scroller(pygame.Surface((200,2000)),maxheight=500,x=790,y=105,t="")) #Total Score Scroller
+t3_buttons.append(button(x=790,y=85,thickness=1,text="",t="totup",w=200,h=20))#scroll total score up
+t3_buttons.append(button(x=790,y=605,thickness=1,text="",t="totdo",w=200,h=20))#scroll total score down
 
 #tab4 stuff
-t4_scrolls.append(scroller(pygame.Surface((143,2000)),maxheight=500,x=160,y=105,t="")) #Offensive Score Scroller
-t4_buttons.append(button(x=160,y=85,thickness=1,text="",t="autoup",w=143,h=20)) #scroll offensive score up
-t4_buttons.append(button(x=160,y=605,thickness=1,text="",t="autodo",w=143,h=20)) #scroll offensive score down
-t4_scrolls.append(scroller(pygame.Surface((143,2000)),maxheight=500,x=305,y=105,t="")) #Defensive Score Scroller
-t4_buttons.append(button(x=305,y=85,thickness=1,text="",t="teleup",w=143,h=20))#scroll defensive score up
-t4_buttons.append(button(x=305,y=605,thickness=1,text="",t="teledo",w=143,h=20))#scroll defensive score down
-t4_scrolls.append(scroller(pygame.Surface((143,2000)),maxheight=500,x=455,y=105,t="")) #Assistive Score Scroller
-t4_buttons.append(button(x=455,y=85,thickness=1,text="",t="pyrup",w=143,h=20))#scroll assistive score up
-t4_buttons.append(button(x=455,y=605,thickness=1,text="",t="pyrdo",w=143,h=20))#scroll assistive score down
+t4_scrolls.append(scroller(pygame.Surface((200,2000)),maxheight=500,x=160,y=105,t="")) #Offensive Score Scroller
+t4_buttons.append(button(x=160,y=85,thickness=1,text="",t="autoup",w=200,h=20)) #scroll offensive score up
+t4_buttons.append(button(x=160,y=605,thickness=1,text="",t="autodo",w=200,h=20)) #scroll offensive score down
+t4_scrolls.append(scroller(pygame.Surface((200,2000)),maxheight=500,x=370,y=105,t="")) #Defensive Score Scroller
+t4_buttons.append(button(x=370,y=85,thickness=1,text="",t="teleup",w=200,h=20))#scroll defensive score up
+t4_buttons.append(button(x=370,y=605,thickness=1,text="",t="teledo",w=200,h=20))#scroll defensive score down
+t4_scrolls.append(scroller(pygame.Surface((200,2000)),maxheight=500,x=580,y=105,t="")) #Assistive Score Scroller
+t4_buttons.append(button(x=580,y=85,thickness=1,text="",t="pyrup",w=200,h=20))#scroll assistive score up
+t4_buttons.append(button(x=580,y=605,thickness=1,text="",t="pyrdo",w=200,h=20))#scroll assistive score down
 
 #tab5 stuff
-t5_stuff.append(textbox(x=160,y=65,thickness=1,caption="Offensive Score >= ",clickable=1,val=-30,fs=30,w=50,t="greaterOff"))
-t5_stuff.append(textbox(x=160,y=95,thickness=1,caption="Defensive Score >= ",clickable=1,val=-30,fs=30,w=50,t="greaterDef"))
-t5_stuff.append(textbox(x=160,y=125,thickness =1,caption="Assistive Score >= ",clickable=1,val=-30,fs=30,w=50,t="greaterAst"))
-t5_stuff.append(radio(x=160,y=155,fs=30,caption="Played Offensive",t="wasOff"))
-t5_stuff.append(radio(x=160,y=185,fs=30,caption="Played Defensive",t="wasDef"))
-t5_stuff.append(radio(x=160,y=215,fs=30,caption="Played Assistive",t="wasAst"))
-t5_stuff.append(radio(x=160,y=245,fs=30,caption="Scored in Auto",t="autoScored"))
-t5_stuff.append(radio(x=160,y=275,fs=30,caption="Started in the Auto Zone",t="autoStartInZone"))
-t5_stuff.append(radio(x=160,y=305,fs=30,caption="Other Strategy in Auto",t="autoOther"))
-t5_stuff.append(radio(x=160,y=335,fs=30,caption="Hung from a Pyramid",t="successHang"))
-t5_stuff.append(textbox(x=160,y=365,thickness =1,caption="Hang Score >= ",clickable=1,val=-30,fs=30,w=50,t="greaterHangScore"))
-t5_stuff.append(radio(x=160,y=395,fs=30,caption="Supported Bot While Hanging",t="supportBot"))
-t5_stuff.append(radio(x=160,y=425,fs=30,caption="Scored Discs While Hanging",t="scoredOnPyr"))
-t5_stuff.append(radio(x=160,y=455,fs=30,caption="Never Disabled",t="neverDisabled"))
-t5_stuff.append(radio(x=160,y=485,fs=30,caption="No Regular Fouls",t="noRegFoul"))
-t5_stuff.append(radio(x=160,y=515,fs=30,caption="No Technical Fouls",t="noTechFoul"))
-t5_stuff.append(radio(x=160,y=545,fs=30,caption="No Yellow Cards",t="noYellow"))
-t5_stuff.append(radio(x=160,y=575,fs=30,caption="No Red Cards",t="noRed"))
+t5_stuff.append(textbox(x=160,y=65,thickness=1,caption="Offensive Score >= ",clickable=1,val=-30,fs=30,w=50,t="avgOff"))
+t5_stuff.append(textbox(x=160,y=95,thickness=1,caption="Defensive Score >= ",clickable=1,val=-30,fs=30,w=50,t="avgDef"))
+t5_stuff.append(textbox(x=160,y=125,thickness =1,caption="Assistive Score >= ",clickable=1,val=-30,fs=30,w=50,t="avgAst"))
+t5_stuff.append(radio(x=160,y=155,fs=30,caption="Played Offensive",t="numOff"))
+t5_stuff.append(radio(x=160,y=185,fs=30,caption="Played Defensive",t="numDef"))
+t5_stuff.append(radio(x=160,y=215,fs=30,caption="Played Assistive",t="numAst"))
+t5_stuff.append(radio(x=160,y=245,fs=30,caption="Scored in Auto",t="scoredAuto"))
+t5_stuff.append(radio(x=160,y=275,fs=30,caption="Started in the Auto Zone",t="StartedInAuto"))
+t5_stuff.append(radio(x=160,y=305,fs=30,caption="Other Strategy in Auto",t="OtherAutoStrat"))
+t5_stuff.append(radio(x=160,y=335,fs=30,caption="Hung from a Pyramid",t="timesHanged"))
+t5_stuff.append(textbox(x=160,y=365,thickness =1,caption="Hang Score >= ",clickable=1,val=-30,fs=30,w=50,t="avgHangScore"))
+t5_stuff.append(radio(x=160,y=395,fs=30,caption="Supported Bot While Hanging",t="TotalSupportsBot"))
+t5_stuff.append(radio(x=160,y=425,fs=30,caption="Scored Discs While Hanging",t="TotalScoredOnPyr"))
+t5_stuff.append(radio(x=160,y=455,fs=30,caption="Never Disabled",t="disabledCount"))
+t5_stuff.append(radio(x=160,y=485,fs=30,caption="No Regular Fouls",t="hadRegFoul"))
+t5_stuff.append(radio(x=160,y=515,fs=30,caption="No Technical Fouls",t="hadTechFoul"))
+t5_stuff.append(radio(x=160,y=545,fs=30,caption="No Yellow Cards",t="hadYellow"))
+t5_stuff.append(radio(x=160,y=575,fs=30,caption="No Red Cards",t="hadRed"))
 #tab 5's scroller
 t5_scroll = scroller(pygame.Surface((100,2000)),maxheight=400,x=510,y=105,t="")
 t5_wscroll = scroller(pygame.Surface((110,2000)),maxheight=400,x=630,y=105,t="")
